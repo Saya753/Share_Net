@@ -24,7 +24,7 @@ def send_json(sock: socket.socket, obj: dict):
     sock.sendall(payload)
 
 def recv_json(sock: socket.socket) -> dict:
-    (length,) = struct.unpack("!I", recv_exact(sock, 4))
+    (length,) = struct.unpack("!I", recv_exact(sock, 4))  
     payload = recv_exact(sock, length)
     return json.loads(payload.decode("utf-8"))
 

@@ -11,6 +11,8 @@ SHARED_DIR = "shared"
 CHUNK_SIZE = 64 * 1024  # 64KB
 
 # ---------- helpers ----------
+
+# دریافت دقیقا n بایت
 def recv_exact(sock: socket.socket, n: int) -> bytes:
     data = b""
     while len(data) < n:
@@ -20,16 +22,24 @@ def recv_exact(sock: socket.socket, n: int) -> bytes:
         data += chunk
     return data
 
+# اول طول پیام بعد خود پیام ارسال میشه
+# گیرنده میفهمه چند بایت باید بخونه
 def send_json(sock: socket.socket, obj: dict):
     payload = json.dumps(obj).encode("utf-8")
     sock.sendall(struct.pack("!I", len(payload)))
     sock.sendall(payload)
 
+# خواندن طول پیام
+# خواندن داده
+# تبدیل JSON به Dictionary
 def recv_json(sock: socket.socket) -> dict:
     (length,) = struct.unpack("!I", recv_exact(sock, 4))
     payload = recv_exact(sock, length)
     return json.loads(payload.decode("utf-8"))
 
+# اسکن پوشه
+# ساخت لیست
+# خروجی JSON میدهد
 def list_files():
     os.makedirs(SHARED_DIR, exist_ok=True)
     items = []
@@ -44,8 +54,10 @@ def list_files():
             })
     return items
 
+# برای امنیت
+# جلوگیری از ../../etc/passwd
+# فقط نام فایل رو نگه میدارد
 def safe_join(base, filename):
-    # جلوگیری از ../
     filename = os.path.basename(filename)
     return os.path.join(base, filename)
 
@@ -65,7 +77,7 @@ def handle_upload(conn, msg):
     os.makedirs(SHARED_DIR, exist_ok=True)
     out_path = safe_join(SHARED_DIR, name)
 
-    # اگر فایل وجود دارد، overwrite می‌کنیم (برای سادگی فاز اول)
+    # اگر فایل وجود دارد، overwrite می‌کنیم
     received = 0
     with open(out_path, "wb") as f:
         for _ in range(total_chunks):
