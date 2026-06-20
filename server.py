@@ -11,8 +11,6 @@ SHARED_DIR = "shared"
 CHUNK_SIZE = 64 * 1024  # 64KB
 
 # ---------- helpers ----------
-
-# دریافت دقیقا n بایت
 def recv_exact(sock: socket.socket, n: int) -> bytes:
     data = b""
     while len(data) < n:
@@ -22,24 +20,16 @@ def recv_exact(sock: socket.socket, n: int) -> bytes:
         data += chunk
     return data
 
-# اول طول پیام بعد خود پیام ارسال میشه
-# گیرنده میفهمه چند بایت باید بخونه
 def send_json(sock: socket.socket, obj: dict):
     payload = json.dumps(obj).encode("utf-8")
     sock.sendall(struct.pack("!I", len(payload)))
     sock.sendall(payload)
 
-# خواندن طول پیام
-# خواندن داده
-# تبدیل JSON به Dictionary
 def recv_json(sock: socket.socket) -> dict:
     (length,) = struct.unpack("!I", recv_exact(sock, 4))
     payload = recv_exact(sock, length)
     return json.loads(payload.decode("utf-8"))
 
-# اسکن پوشه
-# ساخت لیست
-# خروجی JSON میدهد
 def list_files():
     os.makedirs(SHARED_DIR, exist_ok=True)
     items = []
@@ -54,9 +44,6 @@ def list_files():
             })
     return items
 
-# برای امنیت
-# جلوگیری از ../../etc/passwd
-# فقط نام فایل رو نگه میدارد
 def safe_join(base, filename):
     filename = os.path.basename(filename)
     return os.path.join(base, filename)
@@ -77,7 +64,6 @@ def handle_upload(conn, msg):
     os.makedirs(SHARED_DIR, exist_ok=True)
     out_path = safe_join(SHARED_DIR, name)
 
-    # اگر فایل وجود دارد، overwrite می‌کنیم
     received = 0
     with open(out_path, "wb") as f:
         for _ in range(total_chunks):
@@ -89,7 +75,6 @@ def handle_upload(conn, msg):
                 return
 
             data = recv_exact(conn, chunk_size)
-            # چون سرور ترتیبی است، انتظار داریم chunk_index به ترتیب بیاید
             if chunk_index != received:
                 send_json(conn, {"type": "ERROR", "code": 409, "message": f"Unexpected chunk_index {chunk_index}, expected {received}"})
                 return
@@ -114,8 +99,6 @@ def handle_download(conn, msg):
 
     size = os.path.getsize(path)
     total_chunks = (size + CHUNK_SIZE - 1) // CHUNK_SIZE
-
-    # ابتدا یک پیام JSON برای شروع دانلود
     send_json(conn, {
         "type": "DOWNLOAD_INFO",
         "name": name,
@@ -124,7 +107,6 @@ def handle_download(conn, msg):
         "chunk_size": CHUNK_SIZE
     })
 
-    # سپس chunkها را باینری ارسال می‌کنیم
     with open(path, "rb") as f:
         for idx in range(total_chunks):
             data = f.read(CHUNK_SIZE)
@@ -149,7 +131,6 @@ def main():
         while True:
             conn, addr = s.accept()
             print(f"\n[server] client connected: {addr}")
-            # نکته: چون تک‌ریسه‌ای هستیم، تا پایان این بلوک، کلاینت بعدی در accept منتظر می‌ماند
             try:
                 while True:
                     msg = recv_json(conn)
@@ -165,7 +146,6 @@ def main():
 
                     elif mtype == "DOWNLOAD_REQUEST":
                         print(f"[server] DOWNLOAD_REQUEST name={msg.get('name')}")
-                        # برای نمایش ترتیبی بودن، می‌تونی این خط را فعال کنی تا عمدی کند شود:
                         # time.sleep(5)
                         handle_download(conn, msg)
 
